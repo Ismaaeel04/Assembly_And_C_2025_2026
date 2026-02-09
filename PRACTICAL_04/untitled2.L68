@@ -1,0 +1,53 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 04/02/2026 15:46:04
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Practical 4, PART 3
+00000000                             3  * Written by : Ismael Charaf Megrini
+00000000                             4  * Date       : 04/02/2026
+00000000                             5  * Description:
+00000000                             6  *-----------------------------------------------------------
+00001000                             7      ORG    $1000
+00001000                             8  START:         
+00001000                             9  
+00001000  11FC 0064 3000            10     MOVE.B #100, $3000
+00001006                            11  
+00001006  43F8 3000                 12     LEA $3000, A1
+0000100A                            13  
+0000100A  6100 000A                 14     BSR TAKING_DAMAGE
+0000100E                            15  
+0000100E                            16  BACK_IN_THE_GAME:
+0000100E  6100 000C                 17     BSR HEALTH_PICKUP
+00001012  6000 000E                 18     BRA GAME_END
+00001016                            19     
+00001016                            20  TAKING_DAMAGE:
+00001016  0411 0014                 21     SUB.B #20, (A1)
+0000101A  60F2                      22     BRA BACK_IN_THE_GAME
+0000101C                            23     
+0000101C                            24  HEALTH_PICKUP:
+0000101C  0611 000A                 25     ADD.B #10, (A1)
+00001020  4E75                      26     RTS
+00001022                            27     
+00001022                            28  GAME_END:
+00001022                            29     
+00001022  12BC 0000                 30     MOVE.B #$00, (A1)
+00001026                            31  
+00001026                            32          
+00001026                            33  
+00001026  FFFF FFFF                 34      SIMHALT             
+0000102A                            35  
+0000102A                            36      END    START        
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BACK_IN_THE_GAME    100E
+GAME_END            1022
+HEALTH_PICKUP       101C
+START               1000
+TAKING_DAMAGE       1016
