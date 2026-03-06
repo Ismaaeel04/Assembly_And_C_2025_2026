@@ -1,0 +1,602 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 3/6/2026 12:49:03 PM
+
+00000000                             1  ; ============================================================
+00000000                             2  ; Student Name: Ismael Charaf Megrini
+00000000                             3  ; Student Number: C00313241
+00000000                             4  ; Date: 4/03/2026
+00000000                             5  ; Description: Snake game. Use W/A/S/D to move. Eat * to grow and score.
+00000000                             6  ; ============================================================
+00000000                             7  
+00001000                             8      ORG     $1000
+00001000                             9  
+00001000                            10  ; ---- Constants ----
+00001000  =00000014                 11  BOARD_W     EQU     20
+00001000  =0000000F                 12  BOARD_H     EQU     15
+00001000  =00000064                 13  MAX_LEN     EQU     100
+00001000  =00000001                 14  DIR_UP      EQU     1
+00001000  =00000002                 15  DIR_DOWN    EQU     2
+00001000  =00000003                 16  DIR_LEFT    EQU     3
+00001000  =00000004                 17  DIR_RIGHT   EQU     4
+00001000                            18  
+00001000                            19  ; ---- Program Start ----
+00001000                            20  START:
+00001000  6100 003E                 21              BSR     INIT_GAME
+00001004                            22  
+00001004                            23  MAIN_LOOP:
+00001004  6100 00BA                 24              BSR     DRAW_BOARD
+00001008  6100 01FC                 25              BSR     GET_INPUT
+0000100C  6100 02A6                 26              BSR     MOVE_SNAKE
+00001010  6100 0328                 27              BSR     CHECK_COLLISION
+00001014                            28              
+00001014                            29              ; Check if game over flag is set
+00001014  43F9 0000146E             30              LEA     GAME_FLAG, A1
+0000101A  0C11 0001                 31              CMP.B   #1, (A1)
+0000101E  6700 041A                 32              BEQ     END_GAME
+00001022                            33              
+00001022  6100 0388                 34              BSR     CHECK_FOOD
+00001026                            35              
+00001026                            36              ; Small delay
+00001026  103C 0008                 37              MOVE.B  #8, D0
+0000102A  4E4F                      38              TRAP    #15
+0000102C  2E01                      39              MOVE.L  D1, D7
+0000102E                            40  DELAY_LOOP:
+0000102E  103C 0008                 41              MOVE.B  #8, D0
+00001032  4E4F                      42              TRAP    #15
+00001034  9287                      43              SUB.L   D7, D1
+00001036  B2BC 0000001E             44              CMP.L   #30, D1
+0000103C  6DF0                      45              BLT     DELAY_LOOP
+0000103E                            46              
+0000103E  60C4                      47              BRA     MAIN_LOOP
+00001040                            48  
+00001040                            49  ; ============================================================
+00001040                            50  ; INIT_GAME - Set starting values
+00001040                            51  ; ============================================================
+00001040                            52  INIT_GAME:
+00001040                            53              ; Snake starts at position 10,7
+00001040  43F9 0000146A             54              LEA     SNAKE_X, A1
+00001046  12BC 000A                 55              MOVE.B  #10, (A1)
+0000104A  43F9 0000146B             56              LEA     SNAKE_Y, A1
+00001050  12BC 0007                 57              MOVE.B  #7, (A1)
+00001054                            58              
+00001054                            59              ; Snake length = 3
+00001054  43F9 0000146C             60              LEA     SNAKE_LEN, A1
+0000105A  12BC 0003                 61              MOVE.B  #3, (A1)
+0000105E                            62              
+0000105E                            63              ; Direction = RIGHT
+0000105E  43F9 0000146D             64              LEA     DIRECTION, A1
+00001064  12BC 0004                 65              MOVE.B  #DIR_RIGHT, (A1)
+00001068                            66              
+00001068                            67              ; Score = 0
+00001068  43F9 00001470             68              LEA     SCORE, A1
+0000106E  22BC 00000000             69              MOVE.L  #0, (A1)
+00001074                            70              
+00001074                            71              ; Game flag = 0 (playing)
+00001074  43F9 0000146E             72              LEA     GAME_FLAG, A1
+0000107A  12BC 0000                 73              MOVE.B  #0, (A1)
+0000107E                            74              
+0000107E                            75              ; Init body positions (tail behind head)
+0000107E  43F9 00001476             76              LEA     BODY_X, A1
+00001084  45F9 000014DA             77              LEA     BODY_Y, A2
+0000108A  12BC 000A                 78              MOVE.B  #10, (A1)
+0000108E  14BC 0007                 79              MOVE.B  #7, (A2)
+00001092  137C 0009 0001            80              MOVE.B  #9, 1(A1)
+00001098  157C 0007 0001            81              MOVE.B  #7, 1(A2)
+0000109E  137C 0008 0002            82              MOVE.B  #8, 2(A1)
+000010A4  157C 0007 0002            83              MOVE.B  #7, 2(A2)
+000010AA                            84              
+000010AA                            85              ; Place first food
+000010AA  43F9 00001474             86              LEA     FOOD_X, A1
+000010B0  12BC 0005                 87              MOVE.B  #5, (A1)
+000010B4  43F9 00001475             88              LEA     FOOD_Y, A1
+000010BA  12BC 0005                 89              MOVE.B  #5, (A1)
+000010BE                            90              
+000010BE  4E75                      91              RTS
+000010C0                            92  
+000010C0                            93  ; ============================================================
+000010C0                            94  ; DRAW_BOARD - Clear and draw the game
+000010C0                            95  ; ============================================================
+000010C0                            96  DRAW_BOARD:
+000010C0                            97              ; Clear screen
+000010C0  103C 000B                 98              MOVE.B  #11, D0
+000010C4  323C FF00                 99              MOVE.W  #$FF00, D1
+000010C8  4E4F                     100              TRAP    #15
+000010CA                           101              
+000010CA                           102              ; Set cursor to top
+000010CA  103C 000B                103              MOVE.B  #11, D0
+000010CE  323C 0000                104              MOVE.W  #$0000, D1
+000010D2  4E4F                     105              TRAP    #15
+000010D4                           106              
+000010D4                           107              ; Draw top border
+000010D4  43F9 0000153E            108              LEA     MSG_BORDER_TOP, A1
+000010DA  103C 000D                109              MOVE.B  #13, D0
+000010DE  4E4F                     110              TRAP    #15
+000010E0                           111              
+000010E0                           112              ; Draw each row
+000010E0  1C3C 0000                113              MOVE.B  #0, D6          ; row counter
+000010E4                           114              
+000010E4                           115  DRAW_ROW:
+000010E4  BC3C 000F                116              CMP.B   #BOARD_H, D6
+000010E8  6700 0098                117              BEQ     DRAW_BOTTOM
+000010EC                           118              
+000010EC                           119              ; Print left wall
+000010EC  123C 007C                120              MOVE.B  #'|', D1
+000010F0  103C 0006                121              MOVE.B  #6, D0
+000010F4  4E4F                     122              TRAP    #15
+000010F6                           123              
+000010F6                           124              ; Print each column
+000010F6  1A3C 0000                125              MOVE.B  #0, D5          ; col counter
+000010FA                           126              
+000010FA                           127  DRAW_COL:
+000010FA  BA3C 0014                128              CMP.B   #BOARD_W, D5
+000010FE  6700 0066                129              BEQ     DRAW_ROW_END
+00001102                           130              
+00001102                           131              ; Check if this cell is food
+00001102  43F9 00001474            132              LEA     FOOD_X, A1
+00001108  45F9 00001475            133              LEA     FOOD_Y, A2
+0000110E  BA11                     134              CMP.B   (A1), D5
+00001110  6600 0016                135              BNE     NOT_FOOD
+00001114  BC12                     136              CMP.B   (A2), D6
+00001116  6600 0010                137              BNE     NOT_FOOD
+0000111A                           138              
+0000111A                           139              ; Its food
+0000111A  123C 002A                140              MOVE.B  #'*', D1
+0000111E  103C 0006                141              MOVE.B  #6, D0
+00001122  4E4F                     142              TRAP    #15
+00001124  5205                     143              ADD.B   #1, D5
+00001126  60D2                     144              BRA     DRAW_COL
+00001128                           145              
+00001128                           146  NOT_FOOD:
+00001128                           147              ; Check if this cell is snake body
+00001128  6100 0086                148              BSR     CHECK_BODY_CELL
+0000112C  B83C 0001                149              CMP.B   #1, D4
+00001130  6700 0010                150              BEQ     DRAW_SNAKE_CHAR
+00001134                           151              
+00001134                           152              ; Empty space
+00001134  123C 0020                153              MOVE.B  #' ', D1
+00001138  103C 0006                154              MOVE.B  #6, D0
+0000113C  4E4F                     155              TRAP    #15
+0000113E  5205                     156              ADD.B   #1, D5
+00001140  60B8                     157              BRA     DRAW_COL
+00001142                           158  
+00001142                           159  DRAW_SNAKE_CHAR:
+00001142                           160              ; Check if its the head (index 0)
+00001142  B63C 0001                161              CMP.B   #1, D3
+00001146  6700 0010                162              BEQ     DRAW_HEAD
+0000114A  123C 006F                163              MOVE.B  #'o', D1
+0000114E  103C 0006                164              MOVE.B  #6, D0
+00001152  4E4F                     165              TRAP    #15
+00001154  5205                     166              ADD.B   #1, D5
+00001156  60A2                     167              BRA     DRAW_COL
+00001158                           168  
+00001158                           169  DRAW_HEAD:
+00001158  123C 0040                170              MOVE.B  #'@', D1
+0000115C  103C 0006                171              MOVE.B  #6, D0
+00001160  4E4F                     172              TRAP    #15
+00001162  5205                     173              ADD.B   #1, D5
+00001164  6094                     174              BRA     DRAW_COL
+00001166                           175              
+00001166                           176  DRAW_ROW_END:
+00001166                           177              ; Print right wall and newline
+00001166  123C 007C                178              MOVE.B  #'|', D1
+0000116A  103C 0006                179              MOVE.B  #6, D0
+0000116E  4E4F                     180              TRAP    #15
+00001170                           181              ; Newline
+00001170  43F9 0000156C            182              LEA     MSG_NEWLINE, A1
+00001176  103C 000D                183              MOVE.B  #13, D0
+0000117A  4E4F                     184              TRAP    #15
+0000117C                           185              
+0000117C  5206                     186              ADD.B   #1, D6
+0000117E  6000 FF64                187              BRA     DRAW_ROW
+00001182                           188              
+00001182                           189  DRAW_BOTTOM:
+00001182  43F9 00001555            190              LEA     MSG_BORDER_BOT, A1
+00001188  103C 000D                191              MOVE.B  #13, D0
+0000118C  4E4F                     192              TRAP    #15
+0000118E                           193              
+0000118E                           194              ; Show score
+0000118E  43F9 0000156D            195              LEA     MSG_SCORE, A1
+00001194  4DF9 00001470            196              LEA     SCORE, A6
+0000119A  2216                     197              MOVE.L  (A6), D1
+0000119C  103C 0011                198              MOVE.B  #17, D0
+000011A0  4E4F                     199              TRAP    #15
+000011A2                           200              
+000011A2                           201              ; Show controls
+000011A2  43F9 00001576            202              LEA     MSG_CONTROLS, A1
+000011A8  103C 000D                203              MOVE.B  #13, D0
+000011AC  4E4F                     204              TRAP    #15
+000011AE                           205              
+000011AE  4E75                     206              RTS
+000011B0                           207  
+000011B0                           208  ; ============================================================
+000011B0                           209  ; CHECK_BODY_CELL - Check if D5,D6 is a snake cell
+000011B0                           210  ; Sets D4=1 if yes, D4=0 if no, D3=1 if head
+000011B0                           211  ; ============================================================
+000011B0                           212  CHECK_BODY_CELL:
+000011B0  183C 0000                213              MOVE.B  #0, D4
+000011B4  163C 0000                214              MOVE.B  #0, D3
+000011B8  43F9 00001476            215              LEA     BODY_X, A1
+000011BE  45F9 000014DA            216              LEA     BODY_Y, A2
+000011C4  47F9 0000146C            217              LEA     SNAKE_LEN, A3
+000011CA  1413                     218              MOVE.B  (A3), D2
+000011CC  C4BC 000000FF            219              AND.L   #$FF, D2
+000011D2  7200                     220              MOVE.L  #0, D1
+000011D4                           221              
+000011D4                           222  CHECK_BODY_LP:
+000011D4  B282                     223              CMP.L   D2, D1
+000011D6  6700 002C                224              BEQ     CHECK_BODY_END
+000011DA                           225              
+000011DA  BA31 1000                226              CMP.B   0(A1,D1), D5
+000011DE  6600 0020                227              BNE     CHECK_NEXT
+000011E2  BC32 1000                228              CMP.B   0(A2,D1), D6
+000011E6  6600 0018                229              BNE     CHECK_NEXT
+000011EA                           230              
+000011EA                           231              ; Match found
+000011EA  183C 0001                232              MOVE.B  #1, D4
+000011EE  B2BC 00000000            233              CMP.L   #0, D1
+000011F4  6600 000E                234              BNE     CHECK_BODY_END
+000011F8  163C 0001                235              MOVE.B  #1, D3      ; its the head
+000011FC  6000 0006                236              BRA     CHECK_BODY_END
+00001200                           237              
+00001200                           238  CHECK_NEXT:
+00001200  5281                     239              ADD.L   #1, D1
+00001202  60D0                     240              BRA     CHECK_BODY_LP
+00001204                           241              
+00001204                           242  CHECK_BODY_END:
+00001204  4E75                     243              RTS
+00001206                           244  
+00001206                           245  ; ============================================================
+00001206                           246  ; GET_INPUT - Read keyboard input
+00001206                           247  ; ============================================================
+00001206                           248  GET_INPUT:
+00001206                           249              ; Check if key is pending
+00001206  103C 0007                250              MOVE.B  #7, D0
+0000120A  4E4F                     251              TRAP    #15
+0000120C  B23C 0000                252              CMP.B   #0, D1
+00001210  6700 00A0                253              BEQ     NO_INPUT
+00001214                           254              
+00001214                           255              ; Read the key
+00001214  103C 0005                256              MOVE.B  #5, D0
+00001218  4E4F                     257              TRAP    #15
+0000121A                           258              
+0000121A                           259              ; Check W/A/S/D
+0000121A  B23C 0077                260              CMP.B   #'w', D1
+0000121E  6700 003E                261              BEQ     SET_UP
+00001222  B23C 0057                262              CMP.B   #'W', D1
+00001226  6700 0036                263              BEQ     SET_UP
+0000122A  B23C 0073                264              CMP.B   #'s', D1
+0000122E  6700 0044                265              BEQ     SET_DOWN
+00001232  B23C 0053                266              CMP.B   #'S', D1
+00001236  6700 003C                267              BEQ     SET_DOWN
+0000123A  B23C 0061                268              CMP.B   #'a', D1
+0000123E  6700 004A                269              BEQ     SET_LEFT
+00001242  B23C 0041                270              CMP.B   #'A', D1
+00001246  6700 0042                271              BEQ     SET_LEFT
+0000124A  B23C 0064                272              CMP.B   #'d', D1
+0000124E  6700 0050                273              BEQ     SET_RIGHT
+00001252  B23C 0044                274              CMP.B   #'D', D1
+00001256  6700 0048                275              BEQ     SET_RIGHT
+0000125A  6000 0056                276              BRA     NO_INPUT
+0000125E                           277  
+0000125E                           278  SET_UP:
+0000125E  43F9 0000146D            279              LEA     DIRECTION, A1
+00001264  0C11 0002                280              CMP.B   #DIR_DOWN, (A1)
+00001268  6700 0048                281              BEQ     NO_INPUT
+0000126C  12BC 0001                282              MOVE.B  #DIR_UP, (A1)
+00001270  6000 0040                283              BRA     NO_INPUT
+00001274                           284  SET_DOWN:
+00001274  43F9 0000146D            285              LEA     DIRECTION, A1
+0000127A  0C11 0001                286              CMP.B   #DIR_UP, (A1)
+0000127E  6700 0032                287              BEQ     NO_INPUT
+00001282  12BC 0002                288              MOVE.B  #DIR_DOWN, (A1)
+00001286  6000 002A                289              BRA     NO_INPUT
+0000128A                           290  SET_LEFT:
+0000128A  43F9 0000146D            291              LEA     DIRECTION, A1
+00001290  0C11 0004                292              CMP.B   #DIR_RIGHT, (A1)
+00001294  6700 001C                293              BEQ     NO_INPUT
+00001298  12BC 0003                294              MOVE.B  #DIR_LEFT, (A1)
+0000129C  6000 0014                295              BRA     NO_INPUT
+000012A0                           296  SET_RIGHT:
+000012A0  43F9 0000146D            297              LEA     DIRECTION, A1
+000012A6  0C11 0003                298              CMP.B   #DIR_LEFT, (A1)
+000012AA  6700 0006                299              BEQ     NO_INPUT
+000012AE  12BC 0004                300              MOVE.B  #DIR_RIGHT, (A1)
+000012B2                           301              
+000012B2                           302  NO_INPUT:
+000012B2  4E75                     303              RTS
+000012B4                           304  
+000012B4                           305  ; ============================================================
+000012B4                           306  ; MOVE_SNAKE - Shift body and move head
+000012B4                           307  ; ============================================================
+000012B4                           308  MOVE_SNAKE:
+000012B4  47F9 0000146C            309              LEA     SNAKE_LEN, A3
+000012BA  1413                     310              MOVE.B  (A3), D2
+000012BC  C4BC 000000FF            311              AND.L   #$FF, D2
+000012C2                           312              
+000012C2                           313              ; Shift body from tail to head
+000012C2  43F9 00001476            314              LEA     BODY_X, A1
+000012C8  45F9 000014DA            315              LEA     BODY_Y, A2
+000012CE                           316              
+000012CE  2202                     317              MOVE.L  D2, D1
+000012D0  5381                     318              SUB.L   #1, D1          ; start at last index
+000012D2                           319              
+000012D2                           320  SHIFT_LOOP:
+000012D2  B2BC 00000000            321              CMP.L   #0, D1
+000012D8  6700 0016                322              BEQ     SHIFT_DONE
+000012DC                           323              
+000012DC                           324              ; body[i] = body[i-1]
+000012DC  2001                     325              MOVE.L  D1, D0
+000012DE  5380                     326              SUB.L   #1, D0
+000012E0  13B1 0000 1000           327              MOVE.B  0(A1,D0), 0(A1,D1)
+000012E6  15B2 0000 1000           328              MOVE.B  0(A2,D0), 0(A2,D1)
+000012EC                           329              
+000012EC  5381                     330              SUB.L   #1, D1
+000012EE  60E2                     331              BRA     SHIFT_LOOP
+000012F0                           332              
+000012F0                           333  SHIFT_DONE:
+000012F0                           334              ; Move head based on direction
+000012F0  47F9 0000146D            335              LEA     DIRECTION, A3
+000012F6  1013                     336              MOVE.B  (A3), D0
+000012F8                           337              
+000012F8  49F9 0000146A            338              LEA     SNAKE_X, A4
+000012FE  4BF9 0000146B            339              LEA     SNAKE_Y, A5
+00001304                           340              
+00001304  B03C 0001                341              CMP.B   #DIR_UP, D0
+00001308  6700 0016                342              BEQ     MOVE_UP
+0000130C  B03C 0002                343              CMP.B   #DIR_DOWN, D0
+00001310  6700 0014                344              BEQ     MOVE_DOWN
+00001314  B03C 0003                345              CMP.B   #DIR_LEFT, D0
+00001318  6700 0012                346              BEQ     MOVE_LEFT
+0000131C  6000 0014                347              BRA     MOVE_RIGHT_DIR
+00001320                           348  
+00001320                           349  MOVE_UP:
+00001320  5315                     350              SUB.B   #1, (A5)
+00001322  6000 0010                351              BRA     UPDATE_HEAD
+00001326                           352  MOVE_DOWN:
+00001326  5215                     353              ADD.B   #1, (A5)
+00001328  6000 000A                354              BRA     UPDATE_HEAD
+0000132C                           355  MOVE_LEFT:
+0000132C  5314                     356              SUB.B   #1, (A4)
+0000132E  6000 0004                357              BRA     UPDATE_HEAD
+00001332                           358  MOVE_RIGHT_DIR:
+00001332  5214                     359              ADD.B   #1, (A4)
+00001334                           360  
+00001334                           361  UPDATE_HEAD:
+00001334                           362              ; Update body[0] with new head position
+00001334  1294                     363              MOVE.B  (A4), (A1)
+00001336  1495                     364              MOVE.B  (A5), (A2)
+00001338  4E75                     365              RTS
+0000133A                           366  
+0000133A                           367  ; ============================================================
+0000133A                           368  ; CHECK_COLLISION - Wall and self collision
+0000133A                           369  ; ============================================================
+0000133A                           370  CHECK_COLLISION:
+0000133A  43F9 0000146A            371              LEA     SNAKE_X, A1
+00001340  45F9 0000146B            372              LEA     SNAKE_Y, A2
+00001346                           373              
+00001346                           374              ; Wall check
+00001346  0C11 0000                375              CMP.B   #0, (A1)
+0000134A  6D00 0054                376              BLT     SET_GAMEOVER
+0000134E  0C11 0014                377              CMP.B   #BOARD_W, (A1)
+00001352  6700 004C                378              BEQ     SET_GAMEOVER
+00001356  0C12 0000                379              CMP.B   #0, (A2)
+0000135A  6D00 0044                380              BLT     SET_GAMEOVER
+0000135E  0C12 000F                381              CMP.B   #BOARD_H, (A2)
+00001362  6700 003C                382              BEQ     SET_GAMEOVER
+00001366                           383              
+00001366                           384              ; Self collision - check head vs rest of body
+00001366  47F9 00001476            385              LEA     BODY_X, A3
+0000136C  49F9 000014DA            386              LEA     BODY_Y, A4
+00001372  4BF9 0000146C            387              LEA     SNAKE_LEN, A5
+00001378  1415                     388              MOVE.B  (A5), D2
+0000137A  C4BC 000000FF            389              AND.L   #$FF, D2
+00001380  7201                     390              MOVE.L  #1, D1          ; start from index 1
+00001382                           391              
+00001382                           392  SELF_CHECK:
+00001382  B282                     393              CMP.L   D2, D1
+00001384  6700 0024                394              BEQ     NO_COLLISION
+00001388                           395              
+00001388  1011                     396              MOVE.B  (A1), D0
+0000138A  B033 1000                397              CMP.B   0(A3,D1), D0
+0000138E  6600 000C                398              BNE     SELF_NEXT
+00001392  1012                     399              MOVE.B  (A2), D0
+00001394  B034 1000                400              CMP.B   0(A4,D1), D0
+00001398  6700 0006                401              BEQ     SET_GAMEOVER
+0000139C                           402              
+0000139C                           403  SELF_NEXT:
+0000139C  5281                     404              ADD.L   #1, D1
+0000139E  60E2                     405              BRA     SELF_CHECK
+000013A0                           406              
+000013A0                           407  SET_GAMEOVER:
+000013A0  43F9 0000146E            408              LEA     GAME_FLAG, A1
+000013A6  12BC 0001                409              MOVE.B  #1, (A1)
+000013AA                           410  NO_COLLISION:
+000013AA  4E75                     411              RTS
+000013AC                           412  
+000013AC                           413  ; ============================================================
+000013AC                           414  ; CHECK_FOOD - See if snake ate food
+000013AC                           415  ; ============================================================
+000013AC                           416  CHECK_FOOD:
+000013AC  43F9 0000146A            417              LEA     SNAKE_X, A1
+000013B2  45F9 0000146B            418              LEA     SNAKE_Y, A2
+000013B8  47F9 00001474            419              LEA     FOOD_X, A3
+000013BE  49F9 00001475            420              LEA     FOOD_Y, A4
+000013C4                           421              
+000013C4  1011                     422              MOVE.B  (A1), D0
+000013C6  B013                     423              CMP.B   (A3), D0
+000013C8  6600 0022                424              BNE     NO_EAT
+000013CC  1012                     425              MOVE.B  (A2), D0
+000013CE  B014                     426              CMP.B   (A4), D0
+000013D0  6600 001A                427              BNE     NO_EAT
+000013D4                           428              
+000013D4                           429              ; Ate food! Grow snake
+000013D4  4BF9 0000146C            430              LEA     SNAKE_LEN, A5
+000013DA  5215                     431              ADD.B   #1, (A5)
+000013DC                           432              
+000013DC                           433              ; Add score
+000013DC  4DF9 00001470            434              LEA     SCORE, A6
+000013E2  0696 0000000A            435              ADD.L   #10, (A6)
+000013E8                           436              
+000013E8                           437              ; New food position using timer
+000013E8  6100 0004                438              BSR     PLACE_FOOD
+000013EC                           439              
+000013EC                           440  NO_EAT:
+000013EC  4E75                     441              RTS
+000013EE                           442  
+000013EE                           443  ; ============================================================
+000013EE                           444  ; PLACE_FOOD - Put food at a new spot
+000013EE                           445  ; ============================================================
+000013EE                           446  PLACE_FOOD:
+000013EE  103C 0008                447              MOVE.B  #8, D0
+000013F2  4E4F                     448              TRAP    #15
+000013F4                           449              ; D1.L = time
+000013F4                           450              
+000013F4                           451              ; X = time mod BOARD_W (keep in range 1-18)
+000013F4  C2BC 0000FFFF            452              AND.L   #$FFFF, D1
+000013FA  2401                     453              MOVE.L  D1, D2
+000013FC                           454              
+000013FC                           455              ; Simple mod for X
+000013FC  C2BC 0000000F            456              AND.L   #$0F, D1
+00001402  5481                     457              ADD.L   #2, D1
+00001404  B2BC 00000014            458              CMP.L   #BOARD_W, D1
+0000140A  6D00 0004                459              BLT     X_OK
+0000140E  5B81                     460              SUB.L   #5, D1
+00001410                           461  X_OK:
+00001410  43F9 00001474            462              LEA     FOOD_X, A1
+00001416  1281                     463              MOVE.B  D1, (A1)
+00001418                           464              
+00001418                           465              ; Y from different bits
+00001418  2202                     466              MOVE.L  D2, D1
+0000141A  E889                     467              LSR.L   #4, D1
+0000141C  C2BC 0000000F            468              AND.L   #$0F, D1
+00001422  5281                     469              ADD.L   #1, D1
+00001424  B2BC 0000000F            470              CMP.L   #BOARD_H, D1
+0000142A  6D00 0004                471              BLT     Y_OK
+0000142E  5981                     472              SUB.L   #4, D1
+00001430                           473  Y_OK:
+00001430  43F9 00001475            474              LEA     FOOD_Y, A1
+00001436  1281                     475              MOVE.B  D1, (A1)
+00001438  4E75                     476              RTS
+0000143A                           477  
+0000143A                           478  ; ============================================================
+0000143A                           479  ; END_GAME - Game over screen
+0000143A                           480  ; ============================================================
+0000143A                           481  END_GAME:
+0000143A  43F9 00001587            482              LEA     MSG_GAMEOVER, A1
+00001440  103C 000D                483              MOVE.B  #13, D0
+00001444  4E4F                     484              TRAP    #15
+00001446                           485              
+00001446  43F9 00001599            486              LEA     MSG_FINAL, A1
+0000144C  4DF9 00001470            487              LEA     SCORE, A6
+00001452  2216                     488              MOVE.L  (A6), D1
+00001454  103C 0011                489              MOVE.B  #17, D0
+00001458  4E4F                     490              TRAP    #15
+0000145A                           491              
+0000145A  43F9 0000156C            492              LEA     MSG_NEWLINE, A1
+00001460  103C 000D                493              MOVE.B  #13, D0
+00001464  4E4F                     494              TRAP    #15
+00001466                           495              
+00001466  FFFF FFFF                496              SIMHALT
+0000146A                           497  
+0000146A                           498  ; ============================================================
+0000146A                           499  ; Data Section
+0000146A                           500  ; ============================================================
+0000146A= 0A                       501  SNAKE_X:        DC.B    10
+0000146B= 07                       502  SNAKE_Y:        DC.B    7
+0000146C= 03                       503  SNAKE_LEN:      DC.B    3
+0000146D= 04                       504  DIRECTION:      DC.B    4
+0000146E= 00                       505  GAME_FLAG:      DC.B    0
+00001470                           506                  DS.W    0
+00001470= 00000000                 507  SCORE:          DC.L    0
+00001474= 05                       508  FOOD_X:         DC.B    5
+00001475= 05                       509  FOOD_Y:         DC.B    5
+00001476                           510  
+00001476                           511  ; Snake body arrays
+00001476                           512                  DS.W    0
+00001476                           513  BODY_X:         DS.B    MAX_LEN
+000014DA                           514  BODY_Y:         DS.B    MAX_LEN
+0000153E                           515  
+0000153E                           516  ; ---- Messages ----
+0000153E= 2B 2D 2D 2D 2D 2D ...    517  MSG_BORDER_TOP: DC.B    '+--------------------+',0
+00001555= 2B 2D 2D 2D 2D 2D ...    518  MSG_BORDER_BOT: DC.B    '+--------------------+',0
+0000156C= 00                       519  MSG_NEWLINE:    DC.B    '',0
+0000156D= 20 53 63 6F 72 65 ...    520  MSG_SCORE:      DC.B    ' Score: ',0
+00001576= 20 57 2F 41 2F 53 ...    521  MSG_CONTROLS:   DC.B    ' W/A/S/D to move',0
+00001587= 2A 2A 2A 20 47 41 ...    522  MSG_GAMEOVER:   DC.B    '*** GAME OVER ***',0
+00001599= 46 69 6E 61 6C 20 ...    523  MSG_FINAL:      DC.B    'Final Score: ',0
+000015A7                           524  
+000015A7                           525              END     START
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+BOARD_H             F
+BOARD_W             14
+BODY_X              1476
+BODY_Y              14DA
+CHECK_BODY_CELL     11B0
+CHECK_BODY_END      1204
+CHECK_BODY_LP       11D4
+CHECK_COLLISION     133A
+CHECK_FOOD          13AC
+CHECK_NEXT          1200
+DELAY_LOOP          102E
+DIRECTION           146D
+DIR_DOWN            2
+DIR_LEFT            3
+DIR_RIGHT           4
+DIR_UP              1
+DRAW_BOARD          10C0
+DRAW_BOTTOM         1182
+DRAW_COL            10FA
+DRAW_HEAD           1158
+DRAW_ROW            10E4
+DRAW_ROW_END        1166
+DRAW_SNAKE_CHAR     1142
+END_GAME            143A
+FOOD_X              1474
+FOOD_Y              1475
+GAME_FLAG           146E
+GET_INPUT           1206
+INIT_GAME           1040
+MAIN_LOOP           1004
+MAX_LEN             64
+MOVE_DOWN           1326
+MOVE_LEFT           132C
+MOVE_RIGHT_DIR      1332
+MOVE_SNAKE          12B4
+MOVE_UP             1320
+MSG_BORDER_BOT      1555
+MSG_BORDER_TOP      153E
+MSG_CONTROLS        1576
+MSG_FINAL           1599
+MSG_GAMEOVER        1587
+MSG_NEWLINE         156C
+MSG_SCORE           156D
+NOT_FOOD            1128
+NO_COLLISION        13AA
+NO_EAT              13EC
+NO_INPUT            12B2
+PLACE_FOOD          13EE
+SCORE               1470
+SELF_CHECK          1382
+SELF_NEXT           139C
+SET_DOWN            1274
+SET_GAMEOVER        13A0
+SET_LEFT            128A
+SET_RIGHT           12A0
+SET_UP              125E
+SHIFT_DONE          12F0
+SHIFT_LOOP          12D2
+SNAKE_LEN           146C
+SNAKE_X             146A
+SNAKE_Y             146B
+START               1000
+UPDATE_HEAD         1334
+X_OK                1410
+Y_OK                1430
