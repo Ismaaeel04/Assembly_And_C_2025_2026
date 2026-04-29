@@ -1,0 +1,112 @@
+     1                                  ;-------------------------------------------------------
+     2                                  ; Title       : Parameter Passing Example for x86_64
+     3                                  ; Written by  : Ismael Charaf Megrini (ported to x86_64)
+     4                                  ; Date Created: April-28-2026
+     5                                  ;-------------------------------------------------------
+     6                                   
+     7                                  global main
+     8                                  extern printf
+     9                                  extern scanf
+    10                                   
+    11                                  section .text
+    12                                   
+    13                                  main:
+    14 00000000 55                          push    rbp                             ; set up stack frame
+    15 00000001 4889E5                      mov     rbp, rsp
+    16 00000004 4883EC20                    sub     rsp, 32                         ; reserve space for local use
+    17                                   
+    18 00000008 41BC00000000                mov     r12, 0                          ; Running sum initialized to 0
+    19 0000000E 41BD03000000                mov     r13, 3                          ; Loop counter set to 3
+    20                                   
+    21                                  GAME_LOOP:
+    22                                      ; Input two numbers and add them using REGISTER_ADDER subroutine
+    23 00000014 48BF-                       mov     rdi, PROMPT                     ; Load address of prompt string
+    23 00000016 [0000000000000000] 
+    24 0000001E B800000000                  mov     rax, 0
+    25 00000023 E8(00000000)                call    printf                          ; Display string
+    26                                   
+    27 00000028 48BF-                       mov     rdi, fmt_int                    ; Read integer input (No input validation - Vulnerable!)
+    27 0000002A [3400000000000000] 
+    28 00000032 48BE-                       mov     rsi, num1
+    28 00000034 [0000000000000000] 
+    29 0000003C B800000000                  mov     rax, 0
+    30 00000041 E8(00000000)                call    scanf                           ; Execute system call
+    31 00000046 4C8B3425[00000000]          mov     r14, [num1]                     ; Store first number in r14
+    32                                   
+    33 0000004E 48BF-                       mov     rdi, PROMPT
+    33 00000050 [0000000000000000] 
+    34 00000058 B800000000                  mov     rax, 0
+    35 0000005D E8(00000000)                call    printf                          ; Display prompt again (No validation - Vulnerable!)
+    36                                   
+    37 00000062 48BF-                       mov     rdi, fmt_int
+    37 00000064 [3400000000000000] 
+    38 0000006C 48BE-                       mov     rsi, num2
+    38 0000006E [0800000000000000] 
+    39 00000076 B800000000                  mov     rax, 0
+    40 0000007B E8(00000000)                call    scanf                           ; Read second number into num2 (No validation - Vulnerable!)
+    41                                   
+    42 00000080 4C89F7                      mov     rdi, r14                        ; first number into rdi
+    43 00000083 488B3425[08000000]          mov     rsi, [num2]                     ; second number into rsi
+    44 0000008B E84A000000                  call    REGISTER_ADDER                  ; Call subroutine (rax = rdi + rsi)
+    45 00000090 4901C4                      add     r12, rax                        ; Add result to running sum
+    46                                   
+    47 00000093 48BF-                       mov     rdi, RESULT
+    47 00000095 [0F00000000000000] 
+    48 0000009D 4889C6                      mov     rsi, rax
+    49 000000A0 B800000000                  mov     rax, 0
+    50 000000A5 E8(00000000)                call    printf
+    51                                   
+    52 000000AA E832000000                  call    NEW_LINE
+    53                                   
+    54                                      ; Decrement loop counter and repeat if not zero
+    55 000000AF 4983ED01                    sub     r13, 1
+    56 000000B3 0F855BFFFFFF                jne     GAME_LOOP
+    57                                   
+    58                                      ; Display final sum
+    59 000000B9 48BF-                       mov     rdi, FINAL_RESULT
+    59 000000BB [1F00000000000000] 
+    60 000000C3 4C89E6                      mov     rsi, r12
+    61 000000C6 B800000000                  mov     rax, 0
+    62 000000CB E8(00000000)                call    printf
+    63                                   
+    64 000000D0 4889EC                      mov     rsp, rbp
+    65 000000D3 5D                          pop     rbp
+    66 000000D4 B800000000                  mov     rax, 0
+    67 000000D9 C3                          ret                                     ; SIMHALT
+    68                                   
+    69                                  ;-------------------------------------------------------
+    70                                  ; Add numbers using register parameters
+    71                                  ;-------------------------------------------------------
+    72                                  REGISTER_ADDER:
+    73 000000DA 4889F8                      mov     rax, rdi
+    74 000000DD 4801F0                      add     rax, rsi                        ; Add D2 to D1 (No bounds checking - Vulnerable!)
+    75 000000E0 C3                          ret                                     ; Return from subroutine
+    76                                   
+    77                                  ;-------------------------------------------------------
+    78                                  ; Subroutine to display Carriage Return and Line Feed
+    79                                  ;-------------------------------------------------------
+    80                                  NEW_LINE:
+    81 000000E1 48BF-                       mov     rdi, CRLF
+    81 000000E3 [3200000000000000] 
+    82 000000EB B800000000                  mov     rax, 0
+    83 000000F0 E8(00000000)                call    printf
+    84 000000F5 C3                          ret
+    85                                   
+    86                                  ;-------------------------------------------------------
+    87                                  ; Strings
+    88                                  ;-------------------------------------------------------
+    89                                  section .data
+    90 00000000 456E746572206E756D-     PROMPT          db  'Enter number: ', 0
+    90 00000009 6265723A2000       
+    91 0000000F 5468652073756D2069-     RESULT          db  'The sum is: %ld', 0
+    91 00000018 733A20256C6400     
+    92 0000001F 46696E616C2073756D-     FINAL_RESULT    db  'Final sum is: %ld', 10, 0
+    92 00000028 2069733A20256C640A-
+    92 00000031 00                 
+    93 00000032 0A00                    CRLF            db  10, 0
+    94 00000034 256C6400                fmt_int         db  '%ld', 0
+    95                                   
+    96                                  section .bss
+    97 00000000 ????????????????        num1            resq 1
+    98 00000008 ????????????????        num2            resq 1
+    99                                   
